@@ -1,6 +1,58 @@
 {
   "name": "food-order-workflow",
   "version": "1.0",
-  "description": "Zomato-style food order processing workflow",
-  "stages": []
+  "description": "Zomato-style food order processing",
+
+  "stages": [
+    {
+      "name": "order",
+      "tasks": [
+        {
+          "name": "create-order",
+          "type": "HTTP",
+          "url": "http://order-service/orders"
+        }
+      ]
+    },
+    {
+      "name": "payment",
+      "tasks": [
+        {
+          "name": "process-payment",
+          "type": "HTTP",
+          "url": "http://payment-service/pay"
+        }
+      ]
+    },
+    {
+      "name": "inventory",
+      "tasks": [
+        {
+          "name": "reserve-items",
+          "type": "HTTP",
+          "url": "http://inventory-service/reserve"
+        }
+      ]
+    },
+    {
+      "name": "delivery",
+      "tasks": [
+        {
+          "name": "assign-delivery",
+          "type": "HTTP",
+          "url": "http://delivery-service/assign"
+        }
+      ]
+    },
+    {
+      "name": "notification",
+      "tasks": [
+        {
+          "name": "notify-user",
+          "type": "HTTP",
+          "url": "http://notification-service/send"
+        }
+      ]
+    }
+  ]
 }
