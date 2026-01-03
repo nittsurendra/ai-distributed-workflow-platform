@@ -1,0 +1,6 @@
+{
+  "name": "food-order-workflow",
+  "version": "1.0",
+  "description": "Zomato-style food order processing workflow",
+  "stages": []
+}
