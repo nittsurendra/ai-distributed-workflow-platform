@@ -2,7 +2,7 @@
 
 A **cloud-native, distributed workflow orchestration platform** that executes complex business processes across microservices using **Kafka-driven event orchestration** and **AI-powered failure analysis**.
 
-This system is inspired by how platforms like **Zomato, Flipkart, Uber, and PLEXOS Cloud** coordinate orders, payments, inventory, and compute jobs at massive scale.
+This system is inspired by how platforms like **Zomato, Flipkart, Uber** coordinate orders, payments, inventory, and compute jobs at massive scale.
 
 ---
 
