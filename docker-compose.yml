@@ -6,7 +6,7 @@ services:
     image: otel/opentelemetry-collector-contrib:0.95.0
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
-      - ./dev/otel-collector.yaml:/etc/otel-collector-config.yaml
+      - ./dev/otel-collector.yml:/etc/otel-collector-config.yaml
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
@@ -23,7 +23,7 @@ services:
     image: grafana/tempo:2.3.1
     command: ["-config.file=/etc/tempo.yaml"]
     volumes:
-      - ./dev/tempo.yaml:/etc/tempo.yaml
+      - ./dev/tempo.yml:/etc/tempo.yaml
     ports:
       - "3200:3200"
       - "4317"   # Tempo OTLP input (internal only)
