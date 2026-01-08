@@ -1,14 +1,15 @@
 server:
   http_listen_port: 3200
+  grpc_listen_port: 4317
 
 distributor:
-  receivers:
-    otlp:
-      protocols:
-        grpc:
+  rate_limit_enabled: false
 
 storage:
   trace:
     backend: local
     local:
-      path: /tmp/tempo
+      path: /var/tempo
+
+querier:
+  max_concurrent_queries: 20
