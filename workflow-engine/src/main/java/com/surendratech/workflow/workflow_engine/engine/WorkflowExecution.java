@@ -1,8 +1,8 @@
 package com.surendratech.workflow.workflow_engine.engine;
 
 public class WorkflowExecution {
-    private String executionId;
-    private String workflowId;
+    private final String executionId;
+    private final String workflowId;
     private int currentStageIndex;
     private int currentTaskIndex;
     private String status;
