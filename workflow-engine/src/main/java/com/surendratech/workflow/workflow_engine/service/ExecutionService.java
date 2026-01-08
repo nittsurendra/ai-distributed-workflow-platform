@@ -1,5 +1,6 @@
 package com.surendratech.workflow.workflow_engine.service;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.concurrent.*;
 
@@ -9,8 +10,10 @@ import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 import com.surendratech.workflow.workflow_engine.engine.WorkflowExecutor;
+import com.surendratech.workflow.workflow_engine.entity.WorkflowExecutionEntity;
 import com.surendratech.workflow.workflow_engine.model.WorkflowDefinition;
 import com.surendratech.workflow.workflow_engine.model.WorkflowInstance;
+import com.surendratech.workflow.workflow_engine.repository.WorkflowExecutionRepository;
 
 @Service
 public class ExecutionService {
@@ -18,12 +21,13 @@ public class ExecutionService {
 
     private final WorkflowRegistry registry;
     private final WorkflowExecutor executor;
-    private final ConcurrentHashMap<String, WorkflowInstance> executions = new ConcurrentHashMap<>();
+    private final WorkflowExecutionRepository executionRepository;
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
 
-    public ExecutionService(WorkflowRegistry registry, WorkflowExecutor executor) {
+    public ExecutionService(WorkflowRegistry registry, WorkflowExecutor executor, WorkflowExecutionRepository executionRepository) {
         this.registry = registry;
         this.executor = executor;
+        this.executionRepository = executionRepository;
     }
 
     public String startExecution(String workflowId) {
@@ -34,7 +38,14 @@ public class ExecutionService {
 
         String executionId = UUID.randomUUID().toString();
         WorkflowInstance instance = new WorkflowInstance(executionId, workflowId);
-        executions.put(executionId, instance);
+
+        // Save to database
+        WorkflowExecutionEntity entity = new WorkflowExecutionEntity();
+        entity.setInstanceId(executionId);
+        entity.setWorkflowId(workflowId);
+        entity.setStatus("PENDING");
+        entity.setStartedAt(Instant.now());
+        executionRepository.save(entity);
 
         log.info("Starting execution: {} for workflow: {}", executionId, workflowId);
 
@@ -43,10 +54,13 @@ public class ExecutionService {
             MDC.put("workflow.execution_id", executionId);
             try {
                 instance.markRunning();
+                updateExecutionStatus(executionId, "RUNNING");
                 executor.runExecution(instance, wf);
+                updateExecutionStatus(executionId, "COMPLETED", Instant.now());
             } catch (Exception ex) {
                 log.error("Execution failed", ex);
                 instance.markFailed();
+                updateExecutionStatus(executionId, "FAILED", Instant.now());
             } finally {
                 MDC.remove("workflow.execution_id");
             }
@@ -56,6 +70,33 @@ public class ExecutionService {
     }
 
     public WorkflowInstance getExecution(String executionId) {
-        return executions.get(executionId);
+        var entity = executionRepository.findByInstanceId(executionId);
+        if (entity.isEmpty()) {
+            return null;
+        }
+
+        WorkflowExecutionEntity e = entity.get();
+        WorkflowInstance instance = new WorkflowInstance(e.getInstanceId(), e.getWorkflowId());
+        instance.setStatus(e.getStatus());
+        instance.setStartedAt(e.getStartedAt());
+        instance.setCompletedAt(e.getCompletedAt());
+        return instance;
+    }
+
+    private void updateExecutionStatus(String executionId, String status) {
+        updateExecutionStatus(executionId, status, null);
+    }
+
+    private void updateExecutionStatus(String executionId, String status, Instant completedAt) {
+        var entity = executionRepository.findByInstanceId(executionId);
+        if (entity.isPresent()) {
+            WorkflowExecutionEntity e = entity.get();
+            e.setStatus(status);
+            if (completedAt != null) {
+                e.setCompletedAt(completedAt);
+            }
+            executionRepository.save(e);
+            log.debug("Updated execution {} status to {}", executionId, status);
+        }
     }
 }

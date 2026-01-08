@@ -6,7 +6,7 @@ public class WorkflowInstance {
     private final String instanceId;
     private final String workflowId;
     private String status; // PENDING, RUNNING, COMPLETED, FAILED
-    private final Instant startedAt;
+    private Instant startedAt;
     private Instant completedAt;
 
     public WorkflowInstance(String instanceId, String workflowId) {
@@ -22,6 +22,11 @@ public class WorkflowInstance {
     public String getStatus() { return status; }
     public Instant getStartedAt() { return startedAt; }
     public Instant getCompletedAt() { return completedAt; }
+    
+    // Setters (ADDED)
+    public void setStatus(String status) { this.status = status; }
+    public void setStartedAt(Instant startedAt) { this.startedAt = startedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
     
     // Status change methods
     public void markRunning() { this.status = "RUNNING"; }
