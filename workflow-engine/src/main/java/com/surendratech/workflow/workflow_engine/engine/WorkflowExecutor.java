@@ -8,8 +8,10 @@ import org.springframework.stereotype.Service;
 
 import com.surendratech.workflow.workflow_engine.model.StageDefinition;
 import com.surendratech.workflow.workflow_engine.model.TaskDefinition;
+import com.surendratech.workflow.workflow_engine.model.TaskEvent;
 import com.surendratech.workflow.workflow_engine.model.WorkflowDefinition;
 import com.surendratech.workflow.workflow_engine.model.WorkflowInstance;
+import com.surendratech.workflow.workflow_engine.service.TaskEventProducer;
 import com.surendratech.workflow.workflow_engine.service.WorkflowRegistry;
 
 @Service
@@ -32,19 +34,34 @@ public class WorkflowExecutor {
         return exec;
     }
 
-    // NEW: Run with async instance (used by ExecutionService)
-    public void runExecution(WorkflowInstance instance, WorkflowDefinition workflow) {
+    // NEW: Run with async instance and emit events to Kafka
+    public void runExecutionWithEvents(WorkflowInstance instance, WorkflowDefinition workflow, TaskEventProducer producer) {
         log.info("Executing workflow: {} with instance: {}", workflow.getWorkflowId(), instance.getInstanceId());
-        runWorkflow(instance, workflow);
+        runWorkflowWithEvents(instance, workflow, producer);
     }
 
-    private void runWorkflow(WorkflowInstance instance, WorkflowDefinition workflow) {
+    // Run workflow and emit task events to Kafka
+    private void runWorkflowWithEvents(WorkflowInstance instance, WorkflowDefinition workflow, TaskEventProducer producer) {
         for (StageDefinition stage : workflow.getStages()) {
             log.info("Starting Stage: {} [execution={}]", stage.getStageId(), instance.getInstanceId());
 
             for (TaskDefinition task : stage.getTasks()) {
                 log.info("Running Task: {} with type: {} [execution={}]", 
                     task.getTaskId(), task.getType(), instance.getInstanceId());
+                
+                // Create and emit task event
+                TaskEvent event = new TaskEvent(
+                    instance.getInstanceId(),
+                    instance.getWorkflowId(),
+                    task.getTaskId(),
+                    task.getType(),
+                    task.getInputs()
+                );
+                
+                log.info("Emitting task event: {} to Kafka", event.getEventId());
+                producer.publishTaskEvent(event);
+                
+                // Execute task locally (for now)
                 executeTask(task);
             }
         }
@@ -56,7 +73,9 @@ public class WorkflowExecutor {
         try {
             log.debug("Executing task: {}", task.getTaskId());
             Thread.sleep(500); // simulate work
+            log.debug("Task completed: {}", task.getTaskId());
         } catch (InterruptedException e) {
+            log.error("Task interrupted: {}", task.getTaskId(), e);
             throw new RuntimeException(e);
         }
     }
