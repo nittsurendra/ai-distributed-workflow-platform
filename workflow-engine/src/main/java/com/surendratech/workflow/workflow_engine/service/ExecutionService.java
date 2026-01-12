@@ -22,12 +22,15 @@ public class ExecutionService {
     private final WorkflowRegistry registry;
     private final WorkflowExecutor executor;
     private final WorkflowExecutionRepository executionRepository;
+    private final TaskEventProducer taskEventProducer;
     private final ExecutorService pool = Executors.newFixedThreadPool(4);
 
-    public ExecutionService(WorkflowRegistry registry, WorkflowExecutor executor, WorkflowExecutionRepository executionRepository) {
+    public ExecutionService(WorkflowRegistry registry, WorkflowExecutor executor, 
+                          WorkflowExecutionRepository executionRepository, TaskEventProducer taskEventProducer) {
         this.registry = registry;
         this.executor = executor;
         this.executionRepository = executionRepository;
+        this.taskEventProducer = taskEventProducer;
     }
 
     public String startExecution(String workflowId) {
@@ -55,7 +58,10 @@ public class ExecutionService {
             try {
                 instance.markRunning();
                 updateExecutionStatus(executionId, "RUNNING");
-                executor.runExecution(instance, wf);
+                
+                // Execute workflow and emit task events
+                executor.runExecutionWithEvents(instance, wf, taskEventProducer);
+                
                 updateExecutionStatus(executionId, "COMPLETED", Instant.now());
             } catch (Exception ex) {
                 log.error("Execution failed", ex);
