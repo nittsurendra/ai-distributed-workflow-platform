@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.surendratech.workflow.workflow_engine.engine.WorkflowExecutor;
 import com.surendratech.workflow.workflow_engine.entity.WorkflowExecutionEntity;
+import com.surendratech.workflow.workflow_engine.model.TaskResult;
 import com.surendratech.workflow.workflow_engine.model.WorkflowDefinition;
 import com.surendratech.workflow.workflow_engine.model.WorkflowInstance;
 import com.surendratech.workflow.workflow_engine.repository.WorkflowExecutionRepository;
@@ -73,9 +74,8 @@ public class ExecutionService {
                 new WorkflowInstance(executionId, wf.getWorkflowId());
 
             executor.runExecutionWithEvents(instance, wf, taskEventProducer);
-
-            updateExecutionStatus(executionId, "COMPLETED", Instant.now());
-            log.info("Execution {} completed", executionId);
+            // DO NOT mark completed here
+            // Completion will come from TaskResultConsumer
 
         } catch (Exception ex) {
             log.error("Execution {} failed", executionId, ex);
@@ -114,4 +114,22 @@ public class ExecutionService {
             log.debug("Execution {} → {}", executionId, status);
         });
     }
+
+    @Transactional
+    public void handleTaskResult(TaskResult result) {
+        log.info(
+            "Handling TaskResult: task={} status={} execution={}",
+            result.getTaskId(),
+            result.getStatus(),
+            result.getExecutionId()
+        );
+
+        if ("FAILED".equals(result.getStatus())) {
+            updateExecutionStatus(result.getExecutionId(), "FAILED");
+        }
+
+        // Later: mark task completed in DB
+        // Later: unblock next stage
+    }
+
 }
