@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE TABLE workflow_executions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     instance_id VARCHAR(255) NOT NULL UNIQUE,

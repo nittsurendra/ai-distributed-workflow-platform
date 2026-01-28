@@ -2,12 +2,13 @@ package com.surendratech.workflow.workflow_engine.service;
 
 import java.time.Instant;
 import java.util.UUID;
-import java.util.concurrent.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.surendratech.workflow.workflow_engine.engine.WorkflowExecutor;
 import com.surendratech.workflow.workflow_engine.entity.WorkflowExecutionEntity;
@@ -17,22 +18,30 @@ import com.surendratech.workflow.workflow_engine.repository.WorkflowExecutionRep
 
 @Service
 public class ExecutionService {
+
     private static final Logger log = LoggerFactory.getLogger(ExecutionService.class);
 
     private final WorkflowRegistry registry;
     private final WorkflowExecutor executor;
     private final WorkflowExecutionRepository executionRepository;
     private final TaskEventProducer taskEventProducer;
-    private final ExecutorService pool = Executors.newFixedThreadPool(4);
+    private final ThreadPoolTaskExecutor taskExecutor;
 
-    public ExecutionService(WorkflowRegistry registry, WorkflowExecutor executor, 
-                          WorkflowExecutionRepository executionRepository, TaskEventProducer taskEventProducer) {
+    public ExecutionService(
+            WorkflowRegistry registry,
+            WorkflowExecutor executor,
+            WorkflowExecutionRepository executionRepository,
+            TaskEventProducer taskEventProducer,
+            ThreadPoolTaskExecutor taskExecutor
+    ) {
         this.registry = registry;
         this.executor = executor;
         this.executionRepository = executionRepository;
         this.taskEventProducer = taskEventProducer;
+        this.taskExecutor = taskExecutor;
     }
 
+    @Transactional
     public String startExecution(String workflowId) {
         WorkflowDefinition wf = registry.get(workflowId);
         if (wf == null) {
@@ -40,9 +49,7 @@ public class ExecutionService {
         }
 
         String executionId = UUID.randomUUID().toString();
-        WorkflowInstance instance = new WorkflowInstance(executionId, workflowId);
 
-        // Save to database
         WorkflowExecutionEntity entity = new WorkflowExecutionEntity();
         entity.setInstanceId(executionId);
         entity.setWorkflowId(workflowId);
@@ -50,59 +57,61 @@ public class ExecutionService {
         entity.setStartedAt(Instant.now());
         executionRepository.save(entity);
 
-        log.info("Starting execution: {} for workflow: {}", executionId, workflowId);
+        log.info("Execution {} created for workflow {}", executionId, workflowId);
 
-        // Run async in background
-        pool.submit(() -> {
-            MDC.put("workflow.execution_id", executionId);
-            try {
-                instance.markRunning();
-                updateExecutionStatus(executionId, "RUNNING");
-                
-                // Execute workflow and emit task events
-                executor.runExecutionWithEvents(instance, wf, taskEventProducer);
-                
-                updateExecutionStatus(executionId, "COMPLETED", Instant.now());
-            } catch (Exception ex) {
-                log.error("Execution failed", ex);
-                instance.markFailed();
-                updateExecutionStatus(executionId, "FAILED", Instant.now());
-            } finally {
-                MDC.remove("workflow.execution_id");
-            }
-        });
+        taskExecutor.execute(() -> executeAsync(executionId, wf));
 
         return executionId;
     }
 
-    public WorkflowInstance getExecution(String executionId) {
-        var entity = executionRepository.findByInstanceId(executionId);
-        if (entity.isEmpty()) {
-            return null;
-        }
+    private void executeAsync(String executionId, WorkflowDefinition wf) {
+        MDC.put("workflow.execution_id", executionId);
+        try {
+            updateExecutionStatus(executionId, "RUNNING");
 
-        WorkflowExecutionEntity e = entity.get();
-        WorkflowInstance instance = new WorkflowInstance(e.getInstanceId(), e.getWorkflowId());
-        instance.setStatus(e.getStatus());
-        instance.setStartedAt(e.getStartedAt());
-        instance.setCompletedAt(e.getCompletedAt());
-        return instance;
+            WorkflowInstance instance =
+                new WorkflowInstance(executionId, wf.getWorkflowId());
+
+            executor.runExecutionWithEvents(instance, wf, taskEventProducer);
+
+            updateExecutionStatus(executionId, "COMPLETED", Instant.now());
+            log.info("Execution {} completed", executionId);
+
+        } catch (Exception ex) {
+            log.error("Execution {} failed", executionId, ex);
+            updateExecutionStatus(executionId, "FAILED", Instant.now());
+        } finally {
+            MDC.clear();
+        }
     }
 
-    private void updateExecutionStatus(String executionId, String status) {
+    public WorkflowInstance getExecution(String executionId) {
+        return executionRepository.findByInstanceId(executionId)
+            .map(e -> {
+                WorkflowInstance instance =
+                    new WorkflowInstance(e.getInstanceId(), e.getWorkflowId());
+                instance.setStatus(e.getStatus());
+                instance.setStartedAt(e.getStartedAt());
+                instance.setCompletedAt(e.getCompletedAt());
+                return instance;
+            })
+            .orElse(null);
+    }
+
+    @Transactional
+    void updateExecutionStatus(String executionId, String status) {
         updateExecutionStatus(executionId, status, null);
     }
 
-    private void updateExecutionStatus(String executionId, String status, Instant completedAt) {
-        var entity = executionRepository.findByInstanceId(executionId);
-        if (entity.isPresent()) {
-            WorkflowExecutionEntity e = entity.get();
+    @Transactional
+    void updateExecutionStatus(String executionId, String status, Instant completedAt) {
+        executionRepository.findByInstanceId(executionId).ifPresent(e -> {
             e.setStatus(status);
             if (completedAt != null) {
                 e.setCompletedAt(completedAt);
             }
             executionRepository.save(e);
-            log.debug("Updated execution {} status to {}", executionId, status);
-        }
+            log.debug("Execution {} → {}", executionId, status);
+        });
     }
 }

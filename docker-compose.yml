@@ -4,23 +4,21 @@ services:
 
   # ===================== DATABASE =====================
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15
     container_name: workflow-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: workflow_db
       POSTGRES_USER: workflow_user
       POSTGRES_PASSWORD: workflow_pass
+      TZ: Asia/Kolkata
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U workflow_user"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
   # ===================== OBSERVABILITY =====================
+
   loki:
     image: grafana/loki:2.9.0
     container_name: workflow-loki
