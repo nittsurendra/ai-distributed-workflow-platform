@@ -156,6 +156,117 @@ AI-powered observability
 This is the same architectural pattern used by:
 Uber, Netflix, Amazon, Zomato, and PLEXOS Cloud.
 
+---------------------------------------------------------------------
+## 🧩 Register / Initialize a Workflow
+
+Use this endpoint to register a workflow definition before executing it.
+
+```POST /workflows ```
+
+
+This API stores the workflow definition and makes it available for execution.
+
+📌 Request Body (Workflow Definition – JSON)
+```
+{
+  "workflowId": "bd3d7ceb-0856-4b6c-9251-afecd962ffd1",
+  "name": "Order Processing Workflow",
+  "stages": [
+    {
+      "stageId": "order-validation",
+      "tasks": [
+        {
+          "taskId": "validate-order",
+          "type": "ORDER_VALIDATION",
+          "inputs": {
+            "orderId": "ORD-1001",
+            "userId": "USR-99"
+          },
+          "retryPolicy": {
+            "maxRetries": 2,
+            "backoffSeconds": 5
+          },
+          "timeoutSeconds": 30
+        }
+      ]
+    },
+    {
+      "stageId": "payment-stage",
+      "tasks": [
+        {
+          "taskId": "process-payment",
+          "type": "PAYMENT",
+          "inputs": {
+            "orderId": "ORD-1001",
+            "amount": 499.99,
+            "currency": "INR"
+          },
+          "retryPolicy": {
+            "maxRetries": 3,
+            "backoffSeconds": 10
+          },
+          "timeoutSeconds": 60
+        }
+      ]
+    },
+    {
+      "stageId": "delivery-stage",
+      "tasks": [
+        {
+          "taskId": "assign-delivery",
+          "type": "DELIVERY_ASSIGN",
+          "inputs": {
+            "orderId": "ORD-1001",
+            "city": "Bangalore"
+          },
+          "retryPolicy": {
+            "maxRetries": 1
+          },
+          "timeoutSeconds": 30
+        },
+        {
+          "taskId": "live-tracking",
+          "type": "LIVE_TRACKING",
+          "inputs": {
+            "driverId": "DRV-101",
+            "intervalSeconds": 5
+          },
+          "retryPolicy": {
+            "maxRetries": 0
+          },
+          "timeoutSeconds": 300
+        }
+      ]
+    }
+  ]
+}
+```
+## 📸 Postman Request – Register Workflow
+
+<img width="1100" height="821" alt="image" src="https://github.com/user-attachments/assets/27765ea8-01c7-4916-9fad-1d958b6b3618" />
+
+
+## ▶️ Execute the Workflow
+
+Once the workflow is registered, trigger execution using:
+
+``` POST /executions/start/{workflowId} ```
+
+
+## Example:
+
+``` POST /executions/start/bd3d7ceb-0856-4b6c-9251-afecd962ffd1 ```
+<img width="1760" height="720" alt="image" src="https://github.com/user-attachments/assets/b3c2a66a-4bbd-4e70-832b-72cbce343497" />
+
+DB entries:
+
+<img width="1912" height="910" alt="image" src="https://github.com/user-attachments/assets/7b9cf0bd-3a69-401c-8708-ff9f77b2df0f" />
+
+<img width="1841" height="547" alt="image" src="https://github.com/user-attachments/assets/27c92182-ab8c-414e-a97b-3135c843a223" />
+
+
+---------------------------------------------------------------------
+
 ## 🧑‍💻 Author
 
 Surendra Sharma
