@@ -1,42 +1,21 @@
 package com.surendratech.workflow.workflow_engine.model;
 
 import java.time.Instant;
-import com.fasterxml.jackson.annotation.JsonProperty;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TaskResult {
-    @JsonProperty("event_id")
-    private String eventId;
-    
-    @JsonProperty("execution_id")
-    private String executionId;
-    
-    @JsonProperty("task_id")
-    private String taskId;
-    
-    @JsonProperty("status")
-    private String status; // COMPLETED, FAILED
-    
-    @JsonProperty("result")
-    private Object result;
-    
-    @JsonProperty("error")
-    private String error;
-    
-    @JsonProperty("timestamp")
-    private Instant timestamp;
-    
-    public TaskResult() {}
-    
-    public TaskResult(String eventId, String executionId, String taskId, String status, Object result) {
-        this.eventId = eventId;
-        this.executionId = executionId;
-        this.taskId = taskId;
-        this.status = status;
-        this.result = result;
-        this.timestamp = Instant.now();
-    }
 
-    // Getters & Setters
+    private String eventId;
+    private String executionId;
+    private String taskId;
+    private String status;          // SUCCESS / FAILED
+    private String errorMessage;    // optional
+    private Instant completedAt;
+
+    public TaskResult() {}
+
     public String getEventId() { return eventId; }
     public void setEventId(String eventId) { this.eventId = eventId; }
 
@@ -49,12 +28,9 @@ public class TaskResult {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 
-    public Object getResult() { return result; }
-    public void setResult(Object result) { this.result = result; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
 
-    public String getError() { return error; }
-    public void setError(String error) { this.error = error; }
-
-    public Instant getTimestamp() { return timestamp; }
-    public void setTimestamp(Instant timestamp) { this.timestamp = timestamp; }
+    public Instant getCompletedAt() { return completedAt; }
+    public void setCompletedAt(Instant completedAt) { this.completedAt = completedAt; }
 }
