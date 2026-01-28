@@ -47,7 +47,7 @@ This platform provides:
 ---
 
 ## 🏗 System Architecture
-<img width="2380" height="1556" alt="diagram-export-1-3-2026-10_49_13-PM" src="https://github.com/user-attachments/assets/8e04189c-03d9-452e-9f79-47dfd132ef50" />
+<img width="2574" height="1146" alt="diagram-export-1-3-2026-10_53_55-PM" src="https://github.com/user-attachments/assets/c9bc5b8d-4de3-465d-b266-00f77e71a44b" />
 
 
 
